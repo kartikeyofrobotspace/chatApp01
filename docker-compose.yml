@@ -1,0 +1,45 @@
+# ───────────────────────────────────────────
+# 🐳 docker-compose.yml - Define and run multi-container Docker applications
+# ───────────────────────────────────────────
+
+version: "3.8"  # Specify the Docker Compose version (latest stable is recommended)
+
+services:  # Define the services (containers) for the application
+  svelte-app:  # Name of the service (you can change this if needed)
+    build: .  # 🔨 Build the Docker image using the Dockerfile in the current directory (.)
+    
+    ports:
+      - "3000:3000"  # 🔁 Map port 3000 on the host to port 3000 inside the container
+      # This means you can access the Svelte app at http://localhost:3000
+    
+    environment:  # 🌱 Set environment variables inside the container
+      - NODE_ENV=production  # Define the app environment as "production" (optimizes performance)
+
+    restart: always  # 🔄 Ensure the container restarts automatically if it crashes or the system reboots
+    # Other options:
+    # - "no" (default) → Does not restart automatically
+    # - "always" → Always restart, even if stopped manually
+    # - "on-failure" → Restart only if the container exits with an error
+    # - "unless-stopped" → Restart unless you manually stop it
+
+# ───────────────────────────────────────────
+# ✅ This file helps you manage your Svelte app as a Docker service efficiently!
+# ───────────────────────────────────────────
+
+  websocket-server:
+    build: ./websocket-server # This points to the WebSocket server's Dockerfile
+    command: ["node", "server.js"] # This runs the WebSocket server
+    ports:
+      - "3001:3001"
+    restart: always
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8080:80"   # Expose Nginx on port 80
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro  # Mount custom config
+    depends_on:
+      - svelte-app
+      - websocket-server
+    restart: always

@@ -1,25 +1,38 @@
 <script>
-    import { onMount, afterUpdate } from "svelte";
-    import { tick } from "svelte";
+    import { onMount, tick } from "svelte";
 
     let ws;
     let messages = [];
     let input = "";
-    let username = "User" + Math.floor(Math.random() * 1000); // Temporary username
+    let username = ""; // Unique ID from server
     let chatContainer;
+    let users = []; // List of connected users
+    let selectedRecipient = ""; // ID of user to send a private message
 
     onMount(() => {
         ws = new WebSocket("ws://localhost:8080/ws/");
 
         ws.onmessage = (event) => {
-            const { sender, text } = JSON.parse(event.data);
-            messages = [...messages, { sender, text }];
+            const data = JSON.parse(event.data);
+
+            if (data.type === "id") {
+                // Store the unique ID assigned by the server
+                username = data.userId;
+            } else {
+                // Regular chat message
+                messages = [...messages, data];
+                
+                // Maintain list of users
+                if (!users.includes(data.sender) && data.sender !== username) {
+                    users = [...users, data.sender];
+                }
+            }
         };
     });
 
     async function sendMessage() {
         if (ws && input.trim()) {
-            const messageData = JSON.stringify({ sender: username, text: input });
+            const messageData = JSON.stringify({ sender: username, target: selectedRecipient || null, text: input });
             ws.send(messageData);
             input = "";
             await tick();  // Wait for DOM update
@@ -32,8 +45,6 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
     }
-
-    afterUpdate(scrollToBottom);
 </script>
 
 <style>
@@ -41,8 +52,7 @@
         display: flex;
         flex-direction: column;
         height: 80vh;
-        max-width: 400px;
-        width: 100%;
+        width: 500%;
         background: white;
         border-radius: 10px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -116,13 +126,20 @@
         cursor: pointer;
         font-size: 16px;
     }
+
+    select {
+        padding: 5px;
+        border-radius: 10px;
+        border: 1px solid #ccc;
+        margin-right: 8px;
+    }
 </style>
 
 <div class="flex justify-center items-center min-h-screen bg-gray-200 p-4">
     <div class="chat-container">
         <!-- Chat Header -->
         <div class="bg-blue-500 text-white text-center p-3 font-bold">
-            WebSocket Chat
+            WebSocket Chat (ID: {username})
         </div>
 
         <!-- Messages -->
@@ -137,6 +154,12 @@
 
         <!-- Input Box -->
         <div class="input-container">
+            <select bind:value={selectedRecipient}>
+                <option value="">Broadcast</option>
+                {#each users as user}
+                    <option value={user}>{user}</option>
+                {/each}
+            </select>
             <input 
                 bind:value={input} 
                 placeholder="Type a message..." 

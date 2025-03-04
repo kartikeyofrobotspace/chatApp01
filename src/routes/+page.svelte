@@ -28,6 +28,12 @@
                 }
             }
         };
+
+        // Respond to server pings to prevent disconnection
+        ws.onping = () => {
+            console.log("Ping received. Sending pong...");
+            ws.pong(); // Send pong back to server
+        };
     });
 
     async function sendMessage() {
